@@ -255,6 +255,16 @@ footer{background:linear-gradient(115deg,#0b2c22,#164537 45%,#10382d);border-top
 .photo img{object-fit:contain!important;background:#fff}
 .product:hover .photo img{transform:none}
 body.searching #kategori,body.searching #categories,body.searching .promo-strip,body.searching #paketHead,body.searching #packs{display:none!important}
+
+/* v28: ongkir berdasarkan jarak */
+.locbox{display:grid;gap:8px;margin:0 0 10px}
+.locbtn{border:1.5px solid var(--green,#174d3d);background:#fff;color:var(--green,#174d3d);border-radius:13px;padding:12px;font-weight:800;font-size:14px}
+.locbtn:disabled{opacity:.6}
+.shipinfo{font-size:12px;line-height:1.5;color:#4b5a52;background:#f4f7f1;border-radius:12px;padding:9px 11px}
+.shipinfo:empty{display:none}
+.shipinfo b{color:#174d3d}
+.shiprow{display:flex;justify-content:space-between;gap:10px;font-size:14px;margin:6px 0}
+.shiprow[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -289,7 +299,7 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
   <div class="section-head"><div><h2>Pertanyaan umum</h2></div></div>
   <div class="faq">
     <details><summary>Apakah harga di web sudah pasti?</summary><p>Harga di web adalah perkiraan dan bisa berubah mengikuti pemasok dan pasar. Harga akhir dan stok dikonfirmasi lewat WhatsApp sebelum pesanan diproses.</p></details>
-    <details><summary>Berapa ongkos antarnya?</summary><p>Ongkir dihitung sesuai alamat dan dikonfirmasi lewat WhatsApp. Gratis ongkir dapat berlaku dengan syarat minimum belanja dan area tertentu.</p></details>
+    <details><summary>Berapa ongkos antarnya?</summary><p>Ongkir dihitung dari jarak lokasi Anda ke toko (bagikan lokasi di keranjang) dan dikonfirmasi lewat WhatsApp. Gratis ongkir dapat berlaku dengan syarat minimum belanja dan area tertentu.</p></details>
     <details><summary>Bagaimana cara memesan?</summary><p>Pilih barang, isi nama, nomor HP, dan alamat di keranjang, lalu tekan Kirim Pesanan via WhatsApp.</p></details>
     <details><summary>Jam layanan?</summary><p>Setiap hari kerja pukul 06.00–21.00 WIB.</p></details>
   </div>
@@ -341,12 +351,19 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
     <div class="cartitems" id="cartItems"></div>
     <div class="cart-bottom">
       <div class="totalrow"><span>Perkiraan total</span><span id="total">Rp0</span></div>
-      <div class="cart-note">Total belum termasuk biaya antar. Harga sayur, buah, dan jajanan dapat dikonfirmasi kembali sebelum belanja dilakukan. Nama, nomor HP, dan alamat Anda disimpan untuk keperluan nota dan pengantaran.</div>
+      <div class="shiprow" id="shipRow" hidden><span id="shipLabel">Ongkir</span><span id="shipFee"></span></div>
+      <div class="totalrow" id="grandRow" hidden><span>Total + ongkir</span><span id="grand"></span></div>
+      <div class="cart-note">Ongkir dihitung otomatis dari jarak lokasi Anda (perkiraan) dan dikonfirmasi lewat WhatsApp. Harga sayur, buah, dan jajanan dapat dikonfirmasi kembali sebelum belanja dilakukan. Nama, nomor HP, dan alamat Anda disimpan untuk keperluan nota dan pengantaran.</div>
       <div class="formrow">
         <input id="custName" type="text" placeholder="Nama penerima" autocomplete="name" aria-label="Nama penerima">
         <input id="custPhone" type="tel" placeholder="Nomor HP" autocomplete="tel" aria-label="Nomor HP" inputmode="tel">
       </div>
       <input class="fullinput" id="custAddress" type="text" placeholder="Alamat lengkap pengantaran" autocomplete="street-address" aria-label="Alamat pengantaran">
+      <div class="locbox">
+        <button class="locbtn" id="shareLoc" type="button">📍 Bagikan lokasi saya</button>
+        <input class="fullinput" id="mapsLink" type="text" placeholder="atau tempel link Google Maps / koordinat" aria-label="Link Google Maps atau koordinat" inputmode="url" autocomplete="off">
+        <div class="shipinfo" id="shipInfo" aria-live="polite"></div>
+      </div>
       <select class="fullinput" id="delivery" aria-label="Pilihan pengantaran">
         <option value="">Pilih pengantaran</option>
         <option>Antar dalam wilayah layanan kami</option>
@@ -368,6 +385,83 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
 <script>
 /* Nomor WhatsApp Waroeng Sembako — format 62 tanpa + dan tanpa spasi */
 let WHATSAPP_ADMIN = "628885409972"; // 0888-5409-972
+
+// --- Ongkir berdasarkan jarak (ubah angka di sini) ---
+const SHIP = {
+  storeLat: -7.8265, storeLng: 110.3570, // titik toko (perkiraan Tegal Krapyak, Sewon) - ganti dengan koordinat toko yang pas
+  baseKm: 2,        // jarak awal yang masuk tarif dasar
+  baseFee: 5000,    // tarif dasar (Rp)
+  perKm: 2500,      // tambahan per km setelah jarak awal (Rp)
+  roadFactor: 1.3,  // garis lurus -> perkiraan jarak jalan
+  maxKm: 15,        // di atas ini ongkir dikonfirmasi lewat WhatsApp
+  roundTo: 500
+};
+let shipState = { lat: null, lng: null, km: null, fee: null, out: false };
+const PICKUP = "Ambil sendiri";
+function distKm(a, b, c, d) {
+  const r = x => x * Math.PI / 180, R = 6371;
+  const dLat = r(c - a), dLng = r(d - b);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function setLocation(lat, lng) {
+  const km = Math.max(0.1, distKm(SHIP.storeLat, SHIP.storeLng, lat, lng) * SHIP.roadFactor);
+  shipState.lat = lat; shipState.lng = lng; shipState.km = km;
+  shipState.out = km > SHIP.maxKm;
+  const extra = Math.max(0, Math.ceil(km - SHIP.baseKm));
+  const raw = SHIP.baseFee + extra * SHIP.perKm;
+  shipState.fee = shipState.out ? null : Math.ceil(raw / SHIP.roundTo) * SHIP.roundTo;
+  saveForm();
+  refreshShip();
+}
+function clearLocation() { shipState = { lat: null, lng: null, km: null, fee: null, out: false }; saveForm(); refreshShip(); }
+function parseMapsInput(t) {
+  t = decodeURIComponent(String(t || "").trim());
+  if (!t) return null;
+  const pats = [/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/, /[?&](?:q|ll|query|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/, /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, /^(-?\d+\.\d+)\s*[, ]\s*(-?\d+\.\d+)$/];
+  for (const p of pats) { const m = t.match(p); if (m) return [parseFloat(m[1]), parseFloat(m[2])]; }
+  return null;
+}
+function shipFeeNow() {
+  const d = document.getElementById("delivery").value;
+  if (d === PICKUP) return { kind: "pickup", fee: 0 };
+  if (shipState.km == null) return { kind: "none", fee: null };
+  if (shipState.out) return { kind: "out", fee: null };
+  return { kind: "ok", fee: shipState.fee };
+}
+function refreshShip() {
+  const info = document.getElementById("shipInfo");
+  if (!info) return;
+  const row = document.getElementById("shipRow"), grandRow = document.getElementById("grandRow");
+  const items = products.filter(p => cart[p.id]);
+  const total = items.reduce((sum, p) => sum + p.price * cart[p.id], 0);
+  const f = shipFeeNow();
+  if (f.kind === "pickup") info.textContent = "";
+  else if (f.kind === "none") info.textContent = "Bagikan lokasi untuk melihat perkiraan ongkir.";
+  else if (f.kind === "out") info.innerHTML = `Jarak sekitar <b>${shipState.km.toFixed(1)} km</b>, di luar jangkauan otomatis. Ongkir dikonfirmasi lewat WhatsApp.`;
+  else info.innerHTML = `Jarak sekitar <b>${shipState.km.toFixed(1)} km</b> dari toko. Perkiraan ongkir <b>${rupiah(f.fee)}</b>.`;
+  const show = items.length && (f.kind === "ok" || f.kind === "pickup");
+  row.hidden = !show; grandRow.hidden = !show;
+  if (show) {
+    document.getElementById("shipLabel").textContent = f.kind === "pickup" ? "Ongkir (ambil sendiri)" : `Ongkir (~${shipState.km.toFixed(1)} km)`;
+    document.getElementById("shipFee").textContent = rupiah(f.fee);
+    document.getElementById("grand").textContent = rupiah(total + f.fee);
+  }
+}
+function shareLocation() {
+  const btn = document.getElementById("shareLoc");
+  if (!navigator.geolocation) { toast("Browser tidak mendukung lokasi. Tempel link Google Maps saja."); return; }
+  btn.disabled = true; btn.textContent = "Mencari lokasi...";
+  navigator.geolocation.getCurrentPosition(pos => {
+    btn.disabled = false; btn.textContent = "📍 Perbarui lokasi saya";
+    document.getElementById("mapsLink").value = "";
+    setLocation(pos.coords.latitude, pos.coords.longitude);
+    toast("Lokasi diterima.");
+  }, () => {
+    btn.disabled = false; btn.textContent = "📍 Bagikan lokasi saya";
+    toast("Lokasi tidak bisa diambil. Izinkan akses lokasi, atau tempel link Google Maps.");
+  }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+}
 const normalizeWA = n => {
   let d = String(n || "").replace(/\D/g, "");
   if (d.startsWith("0")) d = "62" + d.slice(1);
@@ -447,7 +541,9 @@ function saveForm() {
       phone: document.getElementById("custPhone").value,
       address: document.getElementById("custAddress").value,
       delivery: document.getElementById("delivery").value,
-      notes: document.getElementById("notes").value
+      notes: document.getElementById("notes").value,
+      lat: shipState.lat, lng: shipState.lng,
+      maps: (document.getElementById("mapsLink") || {}).value || ""
     }));
   } catch (e) {}
 }
@@ -461,6 +557,8 @@ function loadForm() {
     if (f.address) document.getElementById("custAddress").value = f.address;
     if (f.delivery) document.getElementById("delivery").value = f.delivery;
     if (f.notes) document.getElementById("notes").value = f.notes;
+    if (f.maps) document.getElementById("mapsLink").value = f.maps;
+    if (f.lat != null && f.lng != null) setLocation(f.lat, f.lng);
   } catch (e) {}
 }
 
@@ -598,6 +696,7 @@ function updateCart() {
   syncCards();
 
   document.getElementById("checkout").disabled = !items.length;
+  refreshShip();
 }
 
 function toast(msg) {
@@ -669,6 +768,16 @@ document.addEventListener("keydown", e => {
   document.getElementById(id).addEventListener("change", saveForm);
 });
 
+document.getElementById("shareLoc").addEventListener("click", shareLocation);
+document.getElementById("mapsLink").addEventListener("input", e => {
+  const v = e.target.value.trim();
+  if (!v) { clearLocation(); return; }
+  const c = parseMapsInput(v);
+  if (c) setLocation(c[0], c[1]);
+  else { shipState = { lat: null, lng: null, km: null, fee: null, out: false }; refreshShip(); document.getElementById("shipInfo").textContent = "Link belum terbaca. Link pendek (maps.app.goo.gl) tidak bisa dibaca, gunakan tombol Bagikan lokasi."; }
+});
+document.getElementById("delivery").addEventListener("change", refreshShip);
+
 document.getElementById("checkout").addEventListener("click", () => {
   const name = document.getElementById("custName").value.trim();
   const phone = document.getElementById("custPhone").value.trim();
@@ -687,13 +796,22 @@ document.getElementById("checkout").addEventListener("click", () => {
     return;
   }
 
+  if (delivery === "Antar dalam wilayah layanan kami" && shipState.km == null) {
+    toast("Bagikan lokasi dulu agar ongkir bisa dihitung.");
+    return;
+  }
   saveForm();
+  const sf = shipFeeNow();
+  const mapUrl = shipState.km != null ? `https://www.google.com/maps?q=${shipState.lat.toFixed(6)},${shipState.lng.toFixed(6)}` : "";
+  const locLines = sf.kind === "pickup" || !mapUrl ? "" :
+    `\nLokasi: ${mapUrl}\nJarak perkiraan: ${shipState.km.toFixed(1)} km`;
+  const shipLine = sf.kind === "ok" ? `\nPerkiraan ongkir: ${rupiah(sf.fee)}` : sf.kind === "out" ? "\nOngkir: di luar jangkauan, mohon dihitung manual" : "";
 
   const items = products.filter(p => cart[p.id]);
   const lines = items.map(p => `• ${p.name} (${p.unit}) x${cart[p.id]} = ${rupiah(p.price * cart[p.id])}`);
   const total = items.reduce((sum, p) => sum + p.price * cart[p.id], 0);
 
-  saveOrderToDb({ name, phone, address, delivery, notes, orderItems: items.map(p => ({ pid: p.id, name: p.name, unit: String(p.unit || ""), qty: cart[p.id], price: p.price })) });
+  saveOrderToDb({ name, phone, address, delivery, notes: (notes + (mapUrl ? ` | Lokasi: ${mapUrl} | ~${shipState.km.toFixed(1)} km` : "")).trim(), shipping_fee: sf.kind === "ok" ? sf.fee : 0, orderItems: items.map(p => ({ pid: p.id, name: p.name, unit: String(p.unit || ""), qty: cart[p.id], price: p.price })) });
 
   const message =
 `Halo Waroeng Sembako, saya mau pesan belanja.
@@ -701,12 +819,12 @@ document.getElementById("checkout").addEventListener("click", () => {
 Nama: ${name}
 Nomor HP: ${phone}
 Alamat: ${address}
-Pengantaran: ${delivery}
+Pengantaran: ${delivery}${locLines}
 
 DAFTAR PESANAN:
 ${lines.join("\n")}
 
-Perkiraan total barang: ${rupiah(total)}
+Perkiraan total barang: ${rupiah(total)}${shipLine}${sf.kind === "ok" ? `\nPerkiraan total + ongkir: ${rupiah(total + sf.fee)}` : ""}
 Catatan: ${notes || "-"}
 
 Mohon konfirmasi stok, harga akhir, dan ongkir sebelum pesanan diproses. Terima kasih.`;
@@ -867,7 +985,7 @@ function saveOrderToDb(o){
   if(sig===lastOrderSig&&Date.now()-lastOrderAt<120000)return;
   lastOrderSig=sig;lastOrderAt=Date.now();
   try{
-    sbFetch("/rest/v1/wrg_orders",{anon:true,method:"POST",keepalive:true,headers:{"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({customer_name:o.name.slice(0,100),customer_phone:normPhone(o.phone).slice(0,20),address:o.address.slice(0,300),delivery:o.delivery.slice(0,80),notes:o.notes.slice(0,500),items:o.orderItems})}).catch(()=>{lastOrderSig=""});
+    sbFetch("/rest/v1/wrg_orders",{anon:true,method:"POST",keepalive:true,headers:{"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({customer_name:o.name.slice(0,100),customer_phone:normPhone(o.phone).slice(0,20),address:o.address.slice(0,300),delivery:o.delivery.slice(0,80),notes:o.notes.slice(0,500),shipping_fee:Number(o.shipping_fee)||0,items:o.orderItems})}).catch(()=>{lastOrderSig=""});
   }catch(e){lastOrderSig=""}
 }
 const ORDER_STATUS=[["baru","Baru"],["diproses","Diproses"],["diantar","Diantar"],["selesai","Selesai"],["batal","Batal"]];
