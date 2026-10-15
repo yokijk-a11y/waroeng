@@ -986,7 +986,7 @@ function saveOrderToDb(o){
   if(sig===lastOrderSig&&Date.now()-lastOrderAt<120000)return;
   lastOrderSig=sig;lastOrderAt=Date.now();
   try{
-    sbFetch("/rest/v1/wrg_orders",{anon:true,method:"POST",keepalive:true,headers:{"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({customer_name:o.name.slice(0,100),customer_phone:normPhone(o.phone).slice(0,20),address:o.address.slice(0,300),delivery:o.delivery.slice(0,80),notes:o.notes.slice(0,500),shipping_fee:Number(o.shipping_fee)||0,items:o.orderItems})}).catch(()=>{lastOrderSig=""});
+    sbFetch("/rest/v1/wrg_orders",{anon:true,method:"POST",keepalive:true,headers:{"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({customer_name:o.name.slice(0,100),customer_phone:normPhone(o.phone).slice(0,20),address:o.address.slice(0,300),delivery:o.delivery.slice(0,80),notes:o.notes.slice(0,500),items:o.orderItems})}).catch(()=>{lastOrderSig=""});
   }catch(e){lastOrderSig=""}
 }
 const ORDER_STATUS=[["baru","Baru"],["diproses","Diproses"],["diantar","Diantar"],["selesai","Selesai"],["batal","Batal"]];
