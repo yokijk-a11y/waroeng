@@ -265,6 +265,7 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
 .shipinfo b{color:#174d3d}
 .shiprow{display:flex;justify-content:space-between;gap:10px;font-size:14px;margin:6px 0}
 .shiprow[hidden]{display:none}
+.admin-inline{display:inline-block;margin-top:10px;font-size:10px;font-weight:600;padding:5px 10px;border:1px solid #d0b15e55;border-radius:8px;background:transparent;color:#d5ddcf;opacity:.76;box-shadow:none}
 </style>
 </head>
 <body>
@@ -306,11 +307,11 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
 </main>
 <footer>
   <div class="wrap foot">
-    <div><strong>Waroeng Sembako</strong><p>Belanja harian lebih praktis dari rumah.<br>WhatsApp: <a class="wa-link" href="https://wa.me/628885409972" style="color:#ffb648;text-decoration:none;font-weight:700">0888-5409-972</a> · Setiap hari kerja 06.00–21.00 WIB</p></div>
+    <div><strong>Waroeng Sembako</strong><p>Belanja harian lebih praktis dari rumah.<br>WhatsApp: <a class="wa-link" href="https://wa.me/628885409972" style="color:#ffb648;text-decoration:none;font-weight:700">0888-5409-972</a> · Setiap hari kerja 06.00–21.00 WIB</p><button class="admin-open admin-inline" id="openAdmin" type="button">⚙ Admin</button></div>
     <div class="footnote">Harga dan ketersediaan produk perlu dikonfirmasi sebelum pesanan diproses. Area pengantaran mengikuti wilayah layanan kami di Yogyakarta.</div>
   </div>
 </footer>
-<section class="admin-entry" aria-label="Administrasi toko"><button class="admin-open" id="openAdmin" type="button">⚙ Admin</button></section>
+
 <div class="admin-modal" id="adminModal" hidden>
   <div class="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
     <div class="admin-head"><div><h2 id="adminTitle">Admin Waroeng</h2><p id="adminModeText">Masuk untuk mengelola katalog.</p></div><button class="admin-close" id="closeAdmin" type="button" aria-label="Tutup">×</button></div>
