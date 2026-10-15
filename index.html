@@ -267,6 +267,17 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
 .shiprow[hidden]{display:none}
 .admin-inline{display:inline-block;margin-top:10px;font-size:10px;font-weight:600;padding:5px 10px;border:1px solid #d0b15e55;border-radius:8px;background:transparent;color:#d5ddcf;opacity:.76;box-shadow:none}
 .cat{touch-action:manipulation}
+#adminReportSection[hidden]{display:none!important}
+#adminReportSection select{width:100%;padding:11px;border:1px solid #d0b15e;border-radius:11px;background:#fff;font-size:14px;margin-bottom:10px}
+.rp-note{font-size:12px;color:#69766f;margin:0 0 8px}
+.rp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.rp-card{background:#fff;border:1px solid #e2d6ae;border-radius:13px;padding:10px 12px}
+.rp-card small{display:block;font-size:11px;color:#69766f}.rp-card b{font-size:16px;color:#174d3d}
+.rp-card.wide{grid-column:1/-1;background:#f4f7f1}.rp-card.wide b{font-size:20px}
+.rp-h{font-size:13px;font-weight:800;color:#174d3d;margin:12px 0 6px}
+.rp-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid #eee6cc}
+.rp-row span:first-child{flex:1}.rp-row span:last-child{white-space:nowrap;font-weight:700}
+.rp-actions{display:grid;gap:8px;margin-top:14px}
 </style>
 </head>
 <body>
@@ -326,8 +337,13 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
     </form>
     <section id="adminPanel" hidden>
       <div class="admin-panelbar"><span>Kelola produk, paket, dan nota</span><button class="admin-logout" id="adminLogout" type="button">Keluar</button></div>
-      <div class="admin-tabs"><button class="admin-tab on" type="button" data-tab="prod">Produk</button><button class="admin-tab" type="button" data-tab="cat">Kategori</button><button class="admin-tab" type="button" data-tab="pack">Paket</button><button class="admin-tab" type="button" data-tab="order">Nota</button></div>
-      <div class="admin-scroll"><div id="adminOrderSection" hidden><p style="font-size:12px;color:#69766f;margin:0 0 8px">Pesanan dari keranjang tersimpan di sini beserta nomor WhatsApp pembeli. Ketuk pesanan untuk mengubah nota, mencetak, atau mengirimnya ke WhatsApp pembeli.</p><div class="od-filter"><select id="adminOrderStatus" aria-label="Filter status"><option value="">Semua status</option><option value="baru">Baru</option><option value="diproses">Diproses</option><option value="diantar">Diantar</option><option value="selesai">Selesai</option><option value="batal">Batal</option></select><input id="adminOrderSearch" type="search" placeholder="Cari nama / no. HP / nota" aria-label="Cari pesanan"></div><div id="adminOrderList"></div><button class="admin-primary" id="adminAddOrder" type="button">＋ Nota manual</button></div><div id="adminPackSection" hidden><p style="font-size:12px;color:#69766f;margin:0 0 6px">Atur paket sembako: nama, isi barang, urutan, atau hapus. Perubahan tampil untuk semua pembeli setelah disimpan.</p><div id="adminPackList"></div><button class="admin-primary" id="adminAddPack" type="button">＋ Tambah paket</button></div><div id="adminCatSection" hidden><p style="font-size:12px;color:#69766f;margin:0 0 6px">Ubah judul dan foto tampilan menu kategori. Geser posisi foto untuk memilih bagian yang tampil.</p><div id="adminCatList"></div></div><div id="adminProdSection"><div id="adminProductList"></div>
+      <div class="admin-tabs"><button class="admin-tab on" type="button" data-tab="prod">Produk</button><button class="admin-tab" type="button" data-tab="cat">Kategori</button><button class="admin-tab" type="button" data-tab="pack">Paket</button><button class="admin-tab" type="button" data-tab="order">Nota</button><button class="admin-tab" type="button" data-tab="report">Laporan</button></div>
+      <div class="admin-scroll"><div id="adminReportSection" hidden>
+  <p class="rp-note">Laporan dihitung dari pesanan yang tersimpan di tab Nota. Pesanan berstatus Batal tidak dihitung.</p>
+  <select id="reportPeriod" aria-label="Periode laporan"><option value="today">Hari ini</option><option value="7d" selected>7 hari terakhir</option><option value="month">Bulan ini</option><option value="30d">30 hari terakhir</option><option value="all">Semua (200 pesanan terbaru)</option></select>
+  <div id="reportBody"></div>
+  <div class="rp-actions"><button class="admin-primary" id="reportCopy" type="button">Salin ringkasan</button><button class="admin-primary" id="reportCsv" type="button">Unduh CSV</button></div>
+</div><div id="adminOrderSection" hidden><p style="font-size:12px;color:#69766f;margin:0 0 8px">Pesanan dari keranjang tersimpan di sini beserta nomor WhatsApp pembeli. Ketuk pesanan untuk mengubah nota, mencetak, atau mengirimnya ke WhatsApp pembeli.</p><div class="od-filter"><select id="adminOrderStatus" aria-label="Filter status"><option value="">Semua status</option><option value="baru">Baru</option><option value="diproses">Diproses</option><option value="diantar">Diantar</option><option value="selesai">Selesai</option><option value="batal">Batal</option></select><input id="adminOrderSearch" type="search" placeholder="Cari nama / no. HP / nota" aria-label="Cari pesanan"></div><div id="adminOrderList"></div><button class="admin-primary" id="adminAddOrder" type="button">＋ Nota manual</button></div><div id="adminPackSection" hidden><p style="font-size:12px;color:#69766f;margin:0 0 6px">Atur paket sembako: nama, isi barang, urutan, atau hapus. Perubahan tampil untuk semua pembeli setelah disimpan.</p><div id="adminPackList"></div><button class="admin-primary" id="adminAddPack" type="button">＋ Tambah paket</button></div><div id="adminCatSection" hidden><p style="font-size:12px;color:#69766f;margin:0 0 6px">Ubah judul dan foto tampilan menu kategori. Geser posisi foto untuk memilih bagian yang tampil.</p><div id="adminCatList"></div></div><div id="adminProdSection"><div id="adminProductList"></div>
       <form id="adminAddForm" class="admin-add">
         <h3>Tambah produk</h3>
         <div class="admin-form-grid">
@@ -1118,6 +1134,72 @@ document.getElementById("notaPrint").addEventListener("click",()=>window.print()
 document.getElementById("notaWa").addEventListener("click",()=>{if(currentNota)sendNotaWA(currentNota)});
 document.getElementById("notaCopy").addEventListener("click",()=>{if(!currentNota)return;try{navigator.clipboard.writeText(notaText(currentNota)).then(()=>toast("Teks nota disalin"),()=>toast("Gagal menyalin"))}catch(e){toast("Gagal menyalin")}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){const m=document.getElementById("notaModal");if(m&&!m.hidden)m.hidden=true}});
+
+/* ===== Laporan penjualan ===== */
+const WIB_KEY=iso=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jakarta"}).format(new Date(iso));
+const ADD_DAYS=(k,n)=>{const d=new Date(k+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+let reportData=null;
+function reportOrders(){
+  const per=document.getElementById("reportPeriod").value,today=WIB_KEY(new Date().toISOString());
+  return adminOrders.filter(o=>{
+    if(!o.created_at)return false;const k=WIB_KEY(o.created_at);
+    if(per==="today")return k===today;
+    if(per==="7d")return k>=ADD_DAYS(today,-6);
+    if(per==="30d")return k>=ADD_DAYS(today,-29);
+    if(per==="month")return k.slice(0,7)===today.slice(0,7);
+    return true;
+  });
+}
+function buildReport(){
+  const all=reportOrders(),valid=all.filter(o=>o.status!=="batal"),batal=all.length-valid.length;
+  const R={n:valid.length,batal,total:0,ongkir:0,barang:0,lunas:0,belum:0,belumN:0,prod:{},cat:{},rows:valid};
+  valid.forEach(o=>{
+    const t=orderTotal(o),sh=shipOf(o);R.total+=t;R.ongkir+=sh;R.barang+=t-sh;
+    if(o.paid)R.lunas+=t;else{R.belum+=t;R.belumN++}
+    orderItems(o).forEach(x=>{
+      const amt=(Number(x.qty)||0)*(Number(x.price)||0),key=(x.name||"-")+(x.unit?" ("+x.unit+")":"");
+      const p=R.prod[key]||(R.prod[key]={qty:0,amt:0});p.qty+=Number(x.qty)||0;p.amt+=amt;
+      const pr=products.find(z=>String(z.id)===String(x.pid)),c=pr&&categories.find(z=>z.id===pr.cat),cn=c?c.name:"Lainnya / barang bebas";
+      R.cat[cn]=(R.cat[cn]||0)+amt;
+    });
+  });
+  return R;
+}
+const rpNum=n=>String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,".");
+function drawReport(){
+  const R=reportData=buildReport(),per=document.getElementById("reportPeriod"),pl=per.options[per.selectedIndex].text;
+  const top=Object.entries(R.prod).sort((a,b)=>b[1].amt-a[1].amt).slice(0,10);
+  const cats=Object.entries(R.cat).sort((a,b)=>b[1]-a[1]);
+  const avg=R.n?R.total/R.n:0;
+  let h=`<div class="rp-grid"><div class="rp-card wide"><small>Total penjualan (${esc(pl)})</small><b>Rp ${rpNum(R.total)}</b></div>
+  <div class="rp-card"><small>Jumlah pesanan</small><b>${R.n}</b></div><div class="rp-card"><small>Rata-rata per pesanan</small><b>Rp ${rpNum(avg)}</b></div>
+  <div class="rp-card"><small>Nilai barang</small><b>Rp ${rpNum(R.barang)}</b></div><div class="rp-card"><small>Total ongkir</small><b>Rp ${rpNum(R.ongkir)}</b></div>
+  <div class="rp-card"><small>Sudah lunas</small><b>Rp ${rpNum(R.lunas)}</b></div><div class="rp-card"><small>Belum dibayar (${R.belumN} pesanan)</small><b>Rp ${rpNum(R.belum)}</b></div></div>`;
+  if(R.batal)h+=`<p class="rp-note">${R.batal} pesanan batal tidak dihitung.</p>`;
+  h+=`<div class="rp-h">Produk terlaris</div>`+(top.length?top.map(([k,v],i)=>`<div class="rp-row"><span>${i+1}. ${esc(k)} <small>x${esc(String(Math.round(v.qty*100)/100))}</small></span><span>Rp ${rpNum(v.amt)}</span></div>`).join(""):`<p class="rp-note">Belum ada penjualan di periode ini.</p>`);
+  h+=`<div class="rp-h">Penjualan per kategori</div>`+(cats.length?cats.map(([k,v])=>`<div class="rp-row"><span>${esc(k)}</span><span>Rp ${rpNum(v)}</span></div>`).join(""):`<p class="rp-note">-</p>`);
+  document.getElementById("reportBody").innerHTML=h;
+}
+async function loadReport(){
+  document.getElementById("reportBody").innerHTML='<p class="rp-note">Memuat...</p>';
+  try{await adminLoadOrders();drawReport()}catch(err){document.getElementById("reportBody").innerHTML='<p style="font-size:13px;color:#9f2f25">Gagal memuat pesanan. ('+esc(err.message)+')</p>'}
+}
+function reportText(){
+  const R=reportData||buildReport(),per=document.getElementById("reportPeriod"),pl=per.options[per.selectedIndex].text;
+  const top=Object.entries(R.prod).sort((a,b)=>b[1].amt-a[1].amt).slice(0,5);
+  const L=["*LAPORAN PENJUALAN - Waroeng Sembako*","Periode: "+pl,"","Pesanan: "+R.n,"Total penjualan: Rp "+rpNum(R.total),"Nilai barang: Rp "+rpNum(R.barang),"Ongkir: Rp "+rpNum(R.ongkir),"Lunas: Rp "+rpNum(R.lunas),"Belum dibayar: Rp "+rpNum(R.belum)+" ("+R.belumN+" pesanan)"];
+  if(top.length){L.push("","*Produk terlaris*");top.forEach(([k,v],i)=>L.push((i+1)+". "+k+" x"+Math.round(v.qty*100)/100+" = Rp "+rpNum(v.amt)))}
+  return L.join("\n");
+}
+document.getElementById("reportPeriod").addEventListener("change",()=>{if(adminOrders)drawReport()});
+document.getElementById("reportCopy").addEventListener("click",()=>{try{navigator.clipboard.writeText(reportText()).then(()=>toast("Ringkasan disalin"),()=>toast("Gagal menyalin"))}catch(e){toast("Gagal menyalin")}});
+document.getElementById("reportCsv").addEventListener("click",()=>{
+  const R=reportData||buildReport(),q=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  const rows=[["Nota","Tanggal","Pelanggan","Status","Lunas","Subtotal","Ongkir","Diskon","Total"].map(q).join(",")];
+  R.rows.forEach(o=>rows.push([notaNo(o),WIB_KEY(o.created_at),o.customer_name||"",stLabel(o.status),o.paid?"Ya":"Belum",orderSub(o),shipOf(o),Number(o.discount)||0,orderTotal(o)].map(q).join(",")));
+  const blob=new Blob(["\ufeff"+rows.join("\r\n")],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download="laporan-penjualan-"+WIB_KEY(new Date().toISOString())+".csv";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+});
 document.querySelectorAll(".admin-tab").forEach(b=>b.addEventListener("click",async()=>{
   const t=b.dataset.tab;
   document.querySelectorAll(".admin-tab").forEach(x=>x.classList.toggle("on",x===b));
@@ -1125,6 +1207,8 @@ document.querySelectorAll(".admin-tab").forEach(b=>b.addEventListener("click",as
   document.getElementById("adminCatSection").hidden=t!=="cat";
   document.getElementById("adminPackSection").hidden=t!=="pack";
   document.getElementById("adminOrderSection").hidden=t!=="order";
+  document.getElementById("adminReportSection").hidden=t!=="report";
+  if(t==="report")loadReport();
   if(t==="order")loadAdminOrders();
   if(t==="cat")drawAdminCats();
   if(t==="pack"){try{await adminLoadPacks();drawAdminPacks()}catch(err){document.getElementById("adminPackList").innerHTML='<p style="font-size:13px;color:#9f2f25">Tabel paket belum dibuat di Supabase. Jalankan file wrg_packs.sql dulu. ('+esc(err.message)+')</p>'}}
