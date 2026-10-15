@@ -266,6 +266,7 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
 .shiprow{display:flex;justify-content:space-between;gap:10px;font-size:14px;margin:6px 0}
 .shiprow[hidden]{display:none}
 .admin-inline{display:inline-block;margin-top:10px;font-size:10px;font-weight:600;padding:5px 10px;border:1px solid #d0b15e55;border-radius:8px;background:transparent;color:#d5ddcf;opacity:.76;box-shadow:none}
+.cat{touch-action:manipulation}
 </style>
 </head>
 <body>
@@ -573,7 +574,7 @@ function renderCategories() {
   ).join("");
   catsIntro = false;
   document.querySelectorAll(".cat").forEach(b => b.addEventListener("click", () => {
-    activeCategory = activeCategory === b.dataset.cat ? "Semua" : b.dataset.cat;
+    activeCategory = b.dataset.cat;
     document.getElementById("search").value = "";
     renderCategories();
     renderProducts();
