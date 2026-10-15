@@ -286,6 +286,7 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
 .cu-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.cu-top b{color:#174d3d;font-size:15px}.cu-top span{font-size:12px;color:#69766f;white-space:nowrap}
 .cu-meta{font-size:12px;color:#4b5a52;margin:4px 0 8px;line-height:1.5}
 .cu-btns{display:flex;gap:8px}.cu-btns button{flex:1;border:1px solid #d0b15e;border-radius:9px;padding:8px;font-size:12px;font-weight:800;background:#fff;color:#174d3d}
+.more-products{display:block;width:100%;margin:16px 0 4px;padding:13px;border:1.5px solid #c7a04a;border-radius:14px;background:#fff;color:#174d3d;font-weight:800;font-size:14px}.more-products[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -309,6 +310,7 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
   <div class="section-head" id="daftar"><div><h2 id="productHeading">Pilihan untuk kebutuhan harian</h2><p>Harga dapat berubah mengikuti pemasok dan pasar.</p></div><button class="small-link" id="showAll" type="button">Lihat semua</button></div>
   <p class="sr-only" id="resultCount" aria-live="polite"></p>
   <section class="products" id="products"></section>
+  <button class="more-products" id="moreProducts" type="button" hidden></button>
 
   <div class="section-head"><div><h2>Cara pesan</h2><p>Tiga langkah, tanpa ribet.</p></div></div>
   <section class="info-grid">
@@ -546,6 +548,8 @@ let products = [
 ];
 
 let activeCategory = "Semua";
+const PRODUCT_ROWS = 10; // jumlah baris produk yang tampil sebelum tombol "Lihat lebih banyak"
+let productRows = PRODUCT_ROWS, productKey = "";
 let cart = {};
 
 try {
@@ -629,8 +633,14 @@ function renderProducts() {
       ? "Pilihan untuk kebutuhan harian"
       : (categories.find(c => c.id === activeCategory)?.name || "Produk");
 
-  document.getElementById("products").innerHTML = list.length
-    ? list.map(p => `<article class="product" data-id="${esc(p.id)}">
+  const grid = document.getElementById("products");
+  let cols = 2;
+  try { const n = getComputedStyle(grid).gridTemplateColumns.split(" ").filter(x => /px/.test(x)).length; if (n > 0) cols = n; } catch (e) {}
+  const key = activeCategory + "|" + q;
+  if (key !== productKey) { productKey = key; productRows = PRODUCT_ROWS; }
+  const shown = list.slice(0, productRows * cols);
+  grid.innerHTML = list.length
+    ? shown.map(p => `<article class="product" data-id="${esc(p.id)}">
         <div class="photo">
           <img class="product-zoom-trigger" src="${esc((p.images&&p.images[0])||p.img||"")}" alt="${esc(p.name)}" loading="lazy" decoding="async" tabindex="0" role="button" aria-label="Perbesar foto ${esc(p.name)}">
           ${(p.badge || p.promo) ? `<span class="badge">${esc(p.badge || "Promo")}</span>` : ""}
@@ -649,9 +659,13 @@ function renderProducts() {
       img.src = "https://placehold.co/600x400/e4edf8/1f5fa6?text=" + encodeURIComponent(img.alt);
     }, { once: true })
   );
-  document.getElementById("resultCount").textContent = list.length + " produk ditampilkan";
+  const remaining = list.length - shown.length, more = document.getElementById("moreProducts");
+  more.hidden = remaining <= 0;
+  more.textContent = "Lihat lebih banyak (" + remaining + " produk lagi)";
+  document.getElementById("resultCount").textContent = (remaining > 0 ? shown.length + " dari " + list.length : list.length) + " produk ditampilkan";
 }
 
+document.getElementById("moreProducts").addEventListener("click", () => { productRows += PRODUCT_ROWS; renderProducts(); });
 const actHTML = p => cart[p.id]
   ? `<div class="qtycard"><button type="button" data-change="${esc(p.id)}" data-delta="-1" aria-label="Kurangi ${esc(p.name)}">−</button><span>${cart[p.id]}</span><button type="button" data-change="${esc(p.id)}" data-delta="1" aria-label="Tambah ${esc(p.name)}">+</button></div>`
   : `<button class="add" type="button" data-add="${esc(p.id)}" aria-label="Tambah ${esc(p.name)} ke keranjang">＋ Tambah</button>`;
@@ -914,8 +928,10 @@ async function sbRemoveImages(urls){const prefix=SB_URL+"/storage/v1/object/publ
 function compressAdminImage(file,maxDim=720,targetKB=70){return new Promise((resolve,reject)=>{if(!file||!file.type.startsWith("image/")){reject(new Error("Pilih file gambar."));return}const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{try{const kb=s=>Math.round(s.length*.75/1024),cv=document.createElement("canvas"),ctx=cv.getContext("2d");let scale=Math.min(1,maxDim/Math.max(img.width,img.height));const draw=()=>{cv.width=Math.max(1,Math.round(img.width*scale));cv.height=Math.max(1,Math.round(img.height*scale));ctx.fillStyle="#fff";ctx.fillRect(0,0,cv.width,cv.height);ctx.drawImage(img,0,0,cv.width,cv.height)};draw();let mime="image/webp",q=.8,out=cv.toDataURL(mime,q);if(!out.startsWith("data:image/webp")){mime="image/jpeg";out=cv.toDataURL(mime,q)}while(kb(out)>targetKB&&q>.45){q-=.07;out=cv.toDataURL(mime,q)}while(kb(out)>targetKB*1.4&&cv.width>360){scale*=.85;draw();out=cv.toDataURL(mime,Math.max(q,.5))}URL.revokeObjectURL(url);toast("Foto dikompres: "+Math.round(file.size/1024)+" KB → "+kb(out)+" KB");resolve(out)}catch(e){URL.revokeObjectURL(url);reject(new Error("Gambar tidak dapat diproses."))}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("Gambar tidak dapat dibaca."))};img.src=url})}
 
 // --- data untuk pembeli (tanpa login) ---
-function normProduct(p){const imgs=Array.isArray(p.images)?p.images.filter(Boolean):[];return{id:p.id,name:p.name,unit:p.unit,price:Number(p.price)||0,cat:p.cat,badge:p.badge||"",promo:!!p.promo,oldPrice:p.oldPrice||undefined,images:imgs,img:imgs[0]||DEFAULT_IMG[p.id]||PLACEHOLDER_IMG}}
-async function loadFromSupabase(){const [prods,cats,sets]=await Promise.all([sbFetch("/rest/v1/wrg_products_public?select=*",{anon:true}).then(r=>r.json()),sbFetch("/rest/v1/wrg_categories_public?select=*",{anon:true}).then(r=>r.json()),sbFetch("/rest/v1/wrg_settings?select=key,value&key=eq.whatsapp",{anon:true}).then(r=>r.json()).catch(()=>[])]);if(Array.isArray(prods))products=prods.map(normProduct);if(Array.isArray(cats)&&cats.length)categories=cats.map(c=>({id:c.id,name:c.name,icon:c.icon||"",img:c.img||undefined,pos:(c.pos&&c.pos!=="center")?c.pos:undefined}));const wa=Array.isArray(sets)&&sets[0]&&normalizeWA(sets[0].value);if(wa&&wa.length>=10)WHATSAPP_ADMIN=wa}
+function normProduct(p){const imgs=Array.isArray(p.images)?p.images.filter(Boolean):[];return{id:p.id,name:p.name,unit:p.unit,price:Number(p.price)||0,cat:p.cat,badge:p.badge||"",promo:!!p.promo,so:Number(p.sort_order)||0,oldPrice:p.oldPrice||undefined,images:imgs,img:imgs[0]||DEFAULT_IMG[p.id]||PLACEHOLDER_IMG}}
+async function loadFromSupabase(){const [prods,cats,sets]=await Promise.all([sbFetch("/rest/v1/wrg_products_public?select=*",{anon:true}).then(r=>r.json()),sbFetch("/rest/v1/wrg_categories_public?select=*",{anon:true}).then(r=>r.json()),sbFetch("/rest/v1/wrg_settings?select=key,value&key=eq.whatsapp",{anon:true}).then(r=>r.json()).catch(()=>[])]);if(Array.isArray(prods)){products=prods.map(normProduct);
+  const idCmp=(a,b)=>{const x=Number(a),y=Number(b);return(!isNaN(x)&&!isNaN(y))?x-y:String(a).localeCompare(String(b))};
+  products.sort((a,b)=>(b.so-a.so)||idCmp(b.id,a.id))}if(Array.isArray(cats)&&cats.length)categories=cats.map(c=>({id:c.id,name:c.name,icon:c.icon||"",img:c.img||undefined,pos:(c.pos&&c.pos!=="center")?c.pos:undefined}));const wa=Array.isArray(sets)&&sets[0]&&normalizeWA(sets[0].value);if(wa&&wa.length>=10)WHATSAPP_ADMIN=wa}
 async function refreshStore(){try{await loadFromSupabase()}catch(e){}try{await loadPacksFromSupabase()}catch(e){}pruneCart();renderCategories();renderProducts();renderPackages();updateCart()}
 
 // --- panel admin ---
