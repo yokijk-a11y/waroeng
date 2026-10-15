@@ -278,6 +278,14 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
 .rp-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid #eee6cc}
 .rp-row span:first-child{flex:1}.rp-row span:last-child{white-space:nowrap;font-weight:700}
 .rp-actions{display:grid;gap:8px;margin-top:14px}
+#adminCustSection[hidden]{display:none!important}
+.cu-tools{display:grid;grid-template-columns:1.3fr 1fr;gap:8px;margin-bottom:8px}
+.cu-tools input,.cu-tools select,#custMsg{width:100%;padding:10px;border:1px solid #d0b15e;border-radius:11px;background:#fff;font-size:14px;box-sizing:border-box;font-family:inherit}
+#custMsg{margin:4px 0 10px;resize:vertical}
+.cu-card{background:#fff;border:1px solid #e2d6ae;border-radius:13px;padding:10px 12px;margin-bottom:8px}
+.cu-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.cu-top b{color:#174d3d;font-size:15px}.cu-top span{font-size:12px;color:#69766f;white-space:nowrap}
+.cu-meta{font-size:12px;color:#4b5a52;margin:4px 0 8px;line-height:1.5}
+.cu-btns{display:flex;gap:8px}.cu-btns button{flex:1;border:1px solid #d0b15e;border-radius:9px;padding:8px;font-size:12px;font-weight:800;background:#fff;color:#174d3d}
 </style>
 </head>
 <body>
@@ -337,8 +345,16 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
     </form>
     <section id="adminPanel" hidden>
       <div class="admin-panelbar"><span>Kelola produk, paket, dan nota</span><button class="admin-logout" id="adminLogout" type="button">Keluar</button></div>
-      <div class="admin-tabs"><button class="admin-tab on" type="button" data-tab="prod">Produk</button><button class="admin-tab" type="button" data-tab="cat">Kategori</button><button class="admin-tab" type="button" data-tab="pack">Paket</button><button class="admin-tab" type="button" data-tab="order">Nota</button><button class="admin-tab" type="button" data-tab="report">Laporan</button></div>
-      <div class="admin-scroll"><div id="adminReportSection" hidden>
+      <div class="admin-tabs"><button class="admin-tab on" type="button" data-tab="prod">Produk</button><button class="admin-tab" type="button" data-tab="cat">Kategori</button><button class="admin-tab" type="button" data-tab="pack">Paket</button><button class="admin-tab" type="button" data-tab="order">Nota</button><button class="admin-tab" type="button" data-tab="report">Laporan</button><button class="admin-tab" type="button" data-tab="cust">Pelanggan</button></div>
+      <div class="admin-scroll"><div id="adminCustSection" hidden>
+  <p class="rp-note">Daftar pelanggan diambil dari pesanan (tidak termasuk yang Batal). Satu nomor WhatsApp dihitung sebagai satu pelanggan.</p>
+  <div class="cu-tools"><input id="custSearch" type="search" placeholder="Cari nama / nomor" aria-label="Cari pelanggan"><select id="custSort" aria-label="Urutkan"><option value="last">Terbaru memesan</option><option value="total">Belanja terbanyak</option><option value="n">Pesanan terbanyak</option><option value="name">Nama A-Z</option></select></div>
+  <div id="custSummary" class="rp-note"></div>
+  <label class="rp-note" for="custMsg" style="display:block;margin-top:8px">Pesan untuk tombol WA (opsional, {nama} diganti nama pelanggan)</label>
+  <textarea id="custMsg" rows="3" placeholder="Halo kak {nama}, ada promo terbaru di Waroeng Sembako..."></textarea>
+  <div id="custList"></div>
+  <div class="rp-actions"><button class="admin-primary" id="custCopyAll" type="button">Salin semua nomor</button><button class="admin-primary" id="custCsv" type="button">Unduh CSV pelanggan</button></div>
+</div><div id="adminReportSection" hidden>
   <p class="rp-note">Laporan dihitung dari pesanan yang tersimpan di tab Nota. Pesanan berstatus Batal tidak dihitung.</p>
   <select id="reportPeriod" aria-label="Periode laporan"><option value="today">Hari ini</option><option value="7d" selected>7 hari terakhir</option><option value="month">Bulan ini</option><option value="30d">30 hari terakhir</option><option value="all">Semua (200 pesanan terbaru)</option></select>
   <div id="reportBody"></div>
@@ -1200,6 +1216,55 @@ document.getElementById("reportCsv").addEventListener("click",()=>{
   const blob=new Blob(["\ufeff"+rows.join("\r\n")],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");
   a.href=URL.createObjectURL(blob);a.download="laporan-penjualan-"+WIB_KEY(new Date().toISOString())+".csv";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 });
+
+/* ===== Daftar pelanggan ===== */
+function buildCustomers(){
+  const map={};
+  adminOrders.filter(o=>o.status!=="batal").forEach(o=>{
+    const ph=normPhone(o.customer_phone||"")||"",key=ph||("n:"+String(o.customer_name||"-").toLowerCase());
+    const c=map[key]||(map[key]={phone:ph,name:o.customer_name||"-",n:0,total:0,last:"",addr:""});
+    c.n++;c.total+=orderTotal(o);
+    if(!c.last||String(o.created_at)>c.last){c.last=String(o.created_at||"");c.name=o.customer_name||c.name;c.addr=o.address||c.addr}
+  });
+  return Object.values(map);
+}
+const custShow=p=>p?p.replace(/^62/,"0"):"-";
+function custFiltered(){
+  const q=document.getElementById("custSearch").value.trim().toLowerCase(),by=document.getElementById("custSort").value;
+  let l=buildCustomers().filter(c=>!q||(c.name+" "+c.phone+" "+custShow(c.phone)).toLowerCase().includes(q));
+  l.sort((a,b)=>by==="total"?b.total-a.total:by==="n"?b.n-a.n:by==="name"?a.name.localeCompare(b.name):String(b.last).localeCompare(String(a.last)));
+  return l;
+}
+function drawCustomers(){
+  const all=buildCustomers(),l=custFiltered();
+  document.getElementById("custSummary").textContent=all.length+" pelanggan, "+all.filter(c=>c.phone).length+" punya nomor WhatsApp"+(l.length!==all.length?" (menampilkan "+l.length+")":"");
+  document.getElementById("custList").innerHTML=l.length?l.map(c=>`<div class="cu-card" data-phone="${E(c.phone)}" data-name="${E(c.name)}"><div class="cu-top"><b>${E(c.name)}</b><span>${c.last?wibDate(c.last):""}</span></div>
+    <div class="cu-meta">${c.phone?E(custShow(c.phone)):"Nomor belum diisi"}<br>${c.n} pesanan &middot; total Rp ${rpNum(c.total)}${c.addr?"<br>"+E(c.addr):""}</div>
+    <div class="cu-btns"><button type="button" data-cu="wa">💬 WA</button><button type="button" data-cu="copy">Salin nomor</button></div></div>`).join(""):'<p class="rp-note">Belum ada pelanggan.</p>';
+}
+async function loadCustomers(){
+  document.getElementById("custList").innerHTML='<p class="rp-note">Memuat...</p>';
+  try{await adminLoadOrders();drawCustomers()}catch(err){document.getElementById("custList").innerHTML='<p style="font-size:13px;color:#9f2f25">Gagal memuat pesanan. ('+esc(err.message)+')</p>'}
+}
+document.getElementById("custSearch").addEventListener("input",drawCustomers);
+document.getElementById("custSort").addEventListener("change",drawCustomers);
+document.getElementById("custList").addEventListener("click",e=>{
+  const b=e.target.closest("[data-cu]");if(!b)return;const card=b.closest(".cu-card"),ph=card.dataset.phone,nm=card.dataset.name;
+  if(!ph){alert("Nomor WhatsApp pelanggan ini belum diisi.");return}
+  if(b.dataset.cu==="wa")openWaTo(ph,document.getElementById("custMsg").value.replace(/\{nama\}/g,nm));
+  else{try{navigator.clipboard.writeText(custShow(ph)).then(()=>toast("Nomor disalin"),()=>toast("Gagal menyalin"))}catch(x){toast("Gagal menyalin")}}
+});
+document.getElementById("custCopyAll").addEventListener("click",()=>{
+  const nums=[...new Set(custFiltered().map(c=>c.phone).filter(Boolean))].map(custShow);
+  if(!nums.length){toast("Belum ada nomor");return}
+  try{navigator.clipboard.writeText(nums.join("\n")).then(()=>toast(nums.length+" nomor disalin"),()=>toast("Gagal menyalin"))}catch(x){toast("Gagal menyalin")}
+});
+document.getElementById("custCsv").addEventListener("click",()=>{
+  const q=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"',rows=[["Nama","Nomor WhatsApp","Jumlah pesanan","Total belanja","Terakhir memesan","Alamat terakhir"].map(q).join(",")];
+  custFiltered().forEach(c=>rows.push([c.name,custShow(c.phone),c.n,c.total,c.last?WIB_KEY(c.last):"",c.addr].map(q).join(",")));
+  const blob=new Blob(["\ufeff"+rows.join("\r\n")],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download="pelanggan-waroeng-"+WIB_KEY(new Date().toISOString())+".csv";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+});
 document.querySelectorAll(".admin-tab").forEach(b=>b.addEventListener("click",async()=>{
   const t=b.dataset.tab;
   document.querySelectorAll(".admin-tab").forEach(x=>x.classList.toggle("on",x===b));
@@ -1209,6 +1274,8 @@ document.querySelectorAll(".admin-tab").forEach(b=>b.addEventListener("click",as
   document.getElementById("adminOrderSection").hidden=t!=="order";
   document.getElementById("adminReportSection").hidden=t!=="report";
   if(t==="report")loadReport();
+  document.getElementById("adminCustSection").hidden=t!=="cust";
+  if(t==="cust")loadCustomers();
   if(t==="order")loadAdminOrders();
   if(t==="cat")drawAdminCats();
   if(t==="pack"){try{await adminLoadPacks();drawAdminPacks()}catch(err){document.getElementById("adminPackList").innerHTML='<p style="font-size:13px;color:#9f2f25">Tabel paket belum dibuat di Supabase. Jalankan file wrg_packs.sql dulu. ('+esc(err.message)+')</p>'}}
