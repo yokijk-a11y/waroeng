@@ -249,6 +249,12 @@ footer{background:linear-gradient(115deg,#0b2c22,#164537 45%,#10382d);border-top
 .admin-cat-ctl input[type=file]{font-size:11px}
 .admin-cat-btns{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:600px){.admin-cat{grid-template-columns:1fr}}
+
+/* v27: foto produk tidak terpotong + mode pencarian */
+.photo{background:#fff}
+.photo img{object-fit:contain!important;background:#fff}
+.product:hover .photo img{transform:none}
+body.searching #kategori,body.searching #categories,body.searching .promo-strip,body.searching #paketHead,body.searching #packs{display:none!important}
 </style>
 </head>
 <body>
@@ -477,9 +483,12 @@ function renderCategories() {
 
 function renderProducts() {
   const q = document.getElementById("search").value.trim().toLowerCase();
+  document.body.classList.toggle("searching", !!q);
+  const norm = t => String(t || "").toLowerCase().replace(/\bcabe\b/g, "cabai").replace(/\s+/g, " ").trim();
+  const tokens = norm(q).split(" ").filter(Boolean);
   const list = products.filter(p =>
     (activeCategory === "Semua" || (activeCategory === "Promo" ? p.promo : p.cat === activeCategory)) &&
-    p.name.toLowerCase().includes(q)
+    (() => { const hay = norm(p.name + " " + (p.cat || "")); return tokens.every(t => hay.includes(t)); })()
   );
   document.getElementById("productHeading").textContent = q
     ? `Hasil pencarian: “${q}”`
