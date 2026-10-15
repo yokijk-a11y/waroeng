@@ -811,7 +811,7 @@ document.getElementById("checkout").addEventListener("click", () => {
   const lines = items.map(p => `• ${p.name} (${p.unit}) x${cart[p.id]} = ${rupiah(p.price * cart[p.id])}`);
   const total = items.reduce((sum, p) => sum + p.price * cart[p.id], 0);
 
-  saveOrderToDb({ name, phone, address, delivery, notes: (notes + (mapUrl ? ` | Lokasi: ${mapUrl} | ~${shipState.km.toFixed(1)} km` : "")).trim(), shipping_fee: sf.kind === "ok" ? sf.fee : 0, orderItems: items.map(p => ({ pid: p.id, name: p.name, unit: String(p.unit || ""), qty: cart[p.id], price: p.price })) });
+  saveOrderToDb({ name, phone, address, delivery, notes: (notes + (mapUrl ? ` | Lokasi: ${mapUrl} | ~${shipState.km.toFixed(1)} km` : "") + (sf.kind === "ok" ? ` | Ongkir: ${rupiah(sf.fee)}` : "")).trim(), shipping_fee: sf.kind === "ok" ? sf.fee : 0, orderItems: items.map(p => ({ pid: p.id, name: p.name, unit: String(p.unit || ""), qty: cart[p.id], price: p.price })) });
 
   const message =
 `Halo Waroeng Sembako, saya mau pesan belanja.
@@ -995,13 +995,14 @@ const wibDate=(iso,long)=>new Date(iso).toLocaleDateString("id-ID",{day:"numeric
 function notaNo(o){const p=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Jakarta",year:"2-digit",month:"2-digit",day:"2-digit"}).formatToParts(new Date(o.created_at)).reduce((a,x)=>(a[x.type]=x.value,a),{});return "WS-"+p.year+p.month+p.day+"-"+String(o.id).padStart(4,"0")}
 const orderItems=o=>Array.isArray(o.items)?o.items:[];
 const orderSub=o=>orderItems(o).reduce((a,x)=>a+(Number(x.qty)||0)*(Number(x.price)||0),0);
-const orderTotal=o=>Math.max(0,orderSub(o)+(Number(o.shipping_fee)||0)-(Number(o.discount)||0));
+const shipOf=o=>{let f=Number(o.shipping_fee)||0;if(!f){const m=String(o.notes||"").match(/Ongkir:\s*Rp\s*([\d.]+)/i);if(m)f=parseInt(m[1].replace(/\./g,""),10)||0}return f};
+const orderTotal=o=>Math.max(0,orderSub(o)+shipOf(o)-(Number(o.discount)||0));
 const fmtQty=q=>String(Math.round((Number(q)||0)*100)/100).replace(".",",");
 function notaText(o){
   const L=["*NOTA BELANJA - Waroeng Sembako*","No: "+notaNo(o),"Tanggal: "+wibDate(o.created_at,true),"Pelanggan: "+(o.customer_name||"-"),""];
   orderItems(o).forEach((x,i)=>L.push((i+1)+". "+x.name+" - "+fmtQty(x.qty)+(x.unit?" "+x.unit:"")+" x "+rupiah(x.price)+" = "+rupiah(x.qty*x.price)));
   L.push("","Subtotal: "+rupiah(orderSub(o)));
-  if(Number(o.shipping_fee))L.push("Ongkir: "+rupiah(o.shipping_fee));
+  L.push("Ongkir: "+rupiah(shipOf(o)));
   if(Number(o.discount))L.push("Diskon: -"+rupiah(o.discount));
   L.push("*TOTAL: "+rupiah(orderTotal(o))+"*","Status: "+(o.paid?"LUNAS ✅":"Belum dibayar"),"","Terima kasih sudah belanja di Waroeng Sembako 🙏");
   return L.join("\n");
@@ -1024,7 +1025,7 @@ function orderEditor(o){
     <label>Catatan pembeli<input data-f="notes" value="${E(o.notes)}" maxlength="500"></label>
     <strong style="font-size:12px">Barang (nama, jumlah, satuan, harga)</strong><div class="od-items">${orderItems(o).map(orderRow).join("")}</div>
     <div class="od-add"><select class="od-addsel" aria-label="Tambah dari produk">${popts}</select><button type="button" class="admin-edit-btn" data-od-act="addfree">＋ Barang bebas</button></div>
-    <div class="od-grid"><label>Ongkir (Rp)<input data-f="shipping_fee" type="number" min="0" step="500" value="${Number(o.shipping_fee)||0}"></label><label>Diskon (Rp)<input data-f="discount" type="number" min="0" step="500" value="${Number(o.discount)||0}"></label></div>
+    <div class="od-grid"><label>Ongkir (Rp)<input data-f="shipping_fee" type="number" min="0" step="500" value="${shipOf(o)}"></label><label>Diskon (Rp)<input data-f="discount" type="number" min="0" step="500" value="${Number(o.discount)||0}"></label></div>
     <div class="od-total">Total: <b>${rupiah(orderTotal(o))}</b></div>
     <div class="od-grid"><label>Status<select data-f="status">${sopts}</select></label><label class="pk-check" style="align-self:end"><input type="checkbox" data-f="paid"${o.paid?" checked":""}> Sudah dibayar</label></div>
     <label>Catatan internal (tidak masuk nota)<input data-f="admin_note" value="${E(o.admin_note)}" maxlength="300"></label>
@@ -1052,7 +1053,7 @@ const orderPatch=(id,body)=>sbFetch("/rest/v1/wrg_orders?id=eq."+encodeURICompon
 function showNota(o){
   currentNota=o;
   const rows=orderItems(o).map(x=>`<tr><td>${E(x.name)}<br><small>${E(fmtQty(x.qty))}${x.unit?" "+E(x.unit):""} × ${rupiah(x.price)}</small></td><td class="r">${rupiah(x.qty*x.price)}</td></tr>`).join("");
-  const sum=`<tr><td>Subtotal</td><td class="r">${rupiah(orderSub(o))}</td></tr>`+(Number(o.shipping_fee)?`<tr><td>Ongkir</td><td class="r">${rupiah(o.shipping_fee)}</td></tr>`:"")+(Number(o.discount)?`<tr><td>Diskon</td><td class="r">-${rupiah(o.discount)}</td></tr>`:"")+`<tr class="tot"><td>TOTAL</td><td class="r">${rupiah(orderTotal(o))}</td></tr>`;
+  const sum=`<tr><td>Subtotal</td><td class="r">${rupiah(orderSub(o))}</td></tr>`+`<tr><td>Ongkir</td><td class="r">${rupiah(shipOf(o))}</td></tr>`+(Number(o.discount)?`<tr><td>Diskon</td><td class="r">-${rupiah(o.discount)}</td></tr>`:"")+`<tr class="tot"><td>TOTAL</td><td class="r">${rupiah(orderTotal(o))}</td></tr>`;
   document.getElementById("notaPaper").innerHTML=`<div class="nota-head"><b>Waroeng Sembako</b><span>WhatsApp 0${E(WHATSAPP_ADMIN.slice(2))}</span></div><hr>
   <div class="nota-meta"><span>No</span><b>${E(notaNo(o))}</b><span>Tanggal</span><b>${E(wibDate(o.created_at,true))}</b><span>Pelanggan</span><b>${E(o.customer_name||"-")}</b>${o.customer_phone?`<span>WhatsApp</span><b>+${E(o.customer_phone)}</b>`:""}${o.address?`<span>Alamat</span><b>${E(o.address)}</b>`:""}</div><hr>
   <table>${rows||'<tr><td>(belum ada barang)</td><td></td></tr>'}</table><hr><table>${sum}</table>
