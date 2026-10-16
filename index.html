@@ -1174,10 +1174,9 @@ adminOrderList.addEventListener("click",async e=>{
   btn.disabled=true;
   try{
     if(act==="save"){
-      const edited=readOrderCard(card),becamePaid=!o.paid&&edited.paid;
+      const edited=readOrderCard(card);
       await orderPatch(o.id,edited);
       toast("Nota disimpan ✓");
-      if(becamePaid)await saveNotaImage(Object.assign({},o,edited));
     }else if(act==="delete"){
       if(!confirm("Hapus pesanan "+notaNo(o)+" ("+(o.customer_name||"tanpa nama")+")? Tidak bisa dibatalkan."))return;
       await sbFetch("/rest/v1/wrg_orders?id=eq."+encodeURIComponent(o.id),{method:"DELETE",headers:{Prefer:"return=minimal"}});
