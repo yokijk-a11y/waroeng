@@ -406,7 +406,6 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
       </div>
       <select class="fullinput" id="delivery" aria-label="Pilihan pengantaran">
         <option value="Antar ke alamat" selected>Antar ke alamat (ongkir otomatis)</option>
-        <option value="Ambil sendiri">Ambil sendiri di toko</option>
       </select>
       <textarea class="fullinput" id="notes" rows="2" placeholder="Catatan belanja (opsional)" style="resize:vertical" aria-label="Catatan belanja"></textarea>
       <button class="checkout" id="checkout" type="button" disabled>Kirim Pesanan via WhatsApp</button>
@@ -881,7 +880,7 @@ document.getElementById("checkout").addEventListener("click", () => {
 
   saveOrderToDb({ name, phone, address, delivery, notes: (notes + (mapUrl ? ` | Lokasi: ${mapUrl} | ~${shipState.km.toFixed(1)} km` : "") + (sf.kind === "ok" ? ` | Ongkir: ${rupiah(sf.fee)}` : "")).trim(), shipping_fee: sf.kind === "ok" ? sf.fee : 0, orderItems: items.map(p => ({ pid: p.id, name: p.name, unit: String(p.unit || ""), qty: cart[p.id], price: p.price })) });
 
-  const line = "━━━━━━━━━━━━";
+  const line = "━━━━━━━━━━━━━━━━";
   const grand = sf.kind === "ok" ? total + sf.fee : total;
   const message =
 `*PESANAN - WAROENG SEMBAKO*
