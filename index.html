@@ -419,7 +419,7 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
 <a class="wafloat wa-link" href="https://wa.me/628885409972" target="_blank" rel="noopener" aria-label="Chat WhatsApp">💬</a>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<div id="notaModal" hidden role="dialog" aria-modal="true" aria-label="Nota belanja"><div class="nota-wrap"><div class="nota-paper" id="notaPaper"></div><div class="nota-actions"><button type="button" class="admin-primary" id="notaPrint">🖨 Cetak / PDF</button><button type="button" class="admin-edit-btn" id="notaCopy">Salin teks</button><button type="button" class="admin-edit-btn" id="notaWa">📲 Kirim WA</button><button type="button" class="admin-primary" id="notaImg">🖼 Kirim gambar nota</button><button type="button" class="admin-cancel-btn" id="notaClose">Tutup</button></div></div></div>
+<div id="notaModal" hidden role="dialog" aria-modal="true" aria-label="Nota belanja"><div class="nota-wrap"><div class="nota-paper" id="notaPaper"></div><div class="nota-actions"><button type="button" class="admin-primary" id="notaPrint">🖨 Cetak / PDF</button><button type="button" class="admin-edit-btn" id="notaCopy">Salin teks</button><button type="button" class="admin-edit-btn" id="notaWa">Kirim teks WA</button><button type="button" class="admin-primary" id="notaImg">📲 Kirim WA (gambar nota)</button><button type="button" class="admin-cancel-btn" id="notaClose">Tutup</button></div></div></div>
 <script>
 /* Nomor WhatsApp Waroeng Sembako — format 62 tanpa + dan tanpa spasi */
 let WHATSAPP_ADMIN = "628885409972"; // 0888-5409-972
@@ -1074,12 +1074,22 @@ const shipOf=o=>{let f=Number(o.shipping_fee)||0;if(!f){const m=String(o.notes||
 const orderTotal=o=>Math.max(0,orderSub(o)+shipOf(o)-(Number(o.discount)||0));
 const fmtQty=q=>String(Math.round((Number(q)||0)*100)/100).replace(".",",");
 function notaText(o){
-  const num=n=>String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,"."),line="━━━━━━━━━━━━━━━━";
-  const lines=orderItems(o).map((x,i)=>`${i+1}) ${x.name}${x.unit?" ("+x.unit+")":""}\n${fmtQty(x.qty)} × ${num(x.price)} = *${num((Number(x.qty)||0)*(Number(x.price)||0))}*`);
-  const L=["*PESANAN - WAROENG SEMBAKO*",line,"No : "+notaNo(o),"Tanggal : "+wibDate(o.created_at,true),"Nama : "+(o.customer_name||"-"),line,"*DAFTAR PESANAN* (Rp)"].concat(lines.length?lines:["(belum ada barang)"],[line,"Subtotal : "+rupiah(orderSub(o))]);
-  if(shipOf(o))L.push("Ongkir : "+rupiah(shipOf(o)));
-  if(Number(o.discount))L.push("Diskon : -"+rupiah(o.discount));
-  L.push("*TOTAL : "+rupiah(orderTotal(o))+"*","Status : "+(o.paid?"*LUNAS* ✅":"Belum dibayar"),"","Terima kasih sudah belanja di Waroeng Sembako 🙏");
+  const W=32,num=n=>String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,"."),pad=(t,n)=>String(t).padEnd(n),rp=(t,n)=>String(t).padStart(n);
+  const wrap=(t,n)=>{const out=[];let cur="";String(t||"").split(/\s+/).filter(Boolean).forEach(w=>{while(w.length>n){if(cur){out.push(cur);cur=""}out.push(w.slice(0,n));w=w.slice(n)}if(!cur)cur=w;else if((cur+" "+w).length<=n)cur+=" "+w;else{out.push(cur);cur=w}});if(cur)out.push(cur);return out.length?out:[""]};
+  const kv=(k,v)=>k+rp(v,W-k.length);
+  const T=[pad("No",2)+" "+pad("Barang",12)+" "+pad("Qty",8)+" "+rp("Jumlah",7),"-".repeat(W)];
+  orderItems(o).forEach((x,i)=>{
+    const nm=wrap(x.name,12),qty=(fmtQty(x.qty)+(x.unit?" "+x.unit:"")).slice(0,8),n=Math.max(nm.length,2);
+    for(let k=0;k<n;k++){
+      const a=k===0?pad(i+1,2):"  ",b=pad(nm[k]||"",12);
+      const c=k===0?pad(qty,8):k===1?pad("@"+num(x.price),8):pad("",8);
+      const d=k===0?rp(num(x.qty*x.price),7):rp("",7);
+      T.push((a+" "+b+" "+c+" "+d).replace(/\s+$/,""));
+    }
+  });
+  T.push("-".repeat(W),kv("Subtotal","Rp "+num(orderSub(o))),kv("Ongkir","Rp "+num(shipOf(o))));
+  if(Number(o.discount))T.push(kv("Diskon","-Rp "+num(o.discount)));
+  const L=["*NOTA BELANJA*","*Waroeng Sembako*","","No        : "+notaNo(o),"Tanggal   : "+wibDate(o.created_at,true),"Pelanggan : "+(o.customer_name||"-"),"","```"].concat(T,["```","*TOTAL: "+rupiah(orderTotal(o))+"*","Status: "+(o.paid?"LUNAS \u2705":"Belum dibayar"),"","Terima kasih sudah belanja di Waroeng Sembako \ud83d\ude4f"]);
   return L.join("\n");
 }
 function openWaTo(phone,text){const a=document.createElement("a");a.href="https://wa.me/"+phone+"?text="+encodeURIComponent(text);a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove()}
@@ -1190,8 +1200,6 @@ function notaToCanvas(o){
     const rows=[];
     rows.push(["c","Waroeng Sembako","bold 34px "+F],["c","WhatsApp 0"+WHATSAPP_ADMIN.slice(2),"22px "+F],["hr"]);
     rows.push(["kv","No",notaNo(o)],["kv","Tanggal",wibDate(o.created_at,true)],["kv","Pelanggan",o.customer_name||"-"]);
-    if(o.customer_phone)rows.push(["kv","WhatsApp","+"+o.customer_phone]);
-    if(o.address)rows.push(["kv","Alamat",o.address]);
     rows.push(["hr"]);
     items.forEach(x=>{rows.push(["item",x.name,fmtQty(x.qty)+(x.unit?" "+x.unit:"")+" × "+rupiah(x.price),rupiah(x.qty*x.price)])});
     if(!items.length)rows.push(["c","(belum ada barang)","22px "+F]);
@@ -1237,9 +1245,10 @@ document.getElementById("notaImg").addEventListener("click",async()=>{
       try{await navigator.share({files:[file],title:"Nota "+notaNo(o)});return}catch(e){if(e&&e.name==="AbortError")return}
     }
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();a.remove();
-    toast("Gambar nota diunduh. Kirim lewat WhatsApp sebagai foto.");
+    toast("Gambar nota diunduh. Lampirkan di chat WhatsApp pembeli.");const ph=normPhone(o.customer_phone);if(ph)setTimeout(()=>openWaTo(ph,""),600);
   }catch(err){toast("Gagal membuat gambar nota")}
 });
+
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){const m=document.getElementById("notaModal");if(m&&!m.hidden)m.hidden=true}});
 
 /* ===== Laporan penjualan ===== */
