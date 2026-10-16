@@ -604,7 +604,10 @@ function loadForm() {
   } catch (e) {}
 }
 
+function catRank(c){const k=(String(c.id)+" "+String(c.name)).toLowerCase();if(String(c.id)==="Promo"||String(c.name).toLowerCase()==="promo")return -1;if(/\bobat/.test(k))return 1;return 0}
+function sortCategories(){categories.sort((a,b)=>catRank(a)-catRank(b))}
 function renderCategories() {
+  sortCategories();
   document.getElementById("categories").innerHTML = categories.map((c, i) =>
     `<button class="cat ${CAT_SIZE[c.id] || ""} ${catsIntro ? "intro" : ""} ${activeCategory === c.id ? "active" : ""}" style="--i:${i}" type="button" data-cat="${esc(c.id)}" aria-pressed="${activeCategory === c.id}">
       <span class="cphoto ${(c.img || CAT_IMG[c.id]) ? "" : "noimg"}" aria-hidden="true">${(c.img || CAT_IMG[c.id]) ? `<img src="${esc(c.img || CAT_IMG[c.id])}" alt="" style="object-position:${c.pos || CAT_POS[c.id] || "center"}">` : esc(c.icon)}</span>
