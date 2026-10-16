@@ -875,38 +875,32 @@ document.getElementById("checkout").addEventListener("click", () => {
   const mapUrl = shipState.km != null ? `https://www.google.com/maps?q=${shipState.lat.toFixed(6)},${shipState.lng.toFixed(6)}` : "";
   const locLines = sf.kind === "pickup" || !mapUrl ? "" :
     `\nTitik lokasi: ${mapUrl}\nJarak: ± ${shipState.km.toFixed(1)} km`;
-  const shipLine = sf.kind === "ok" ? `\nOngkir        : ${rupiah(sf.fee)}` : sf.kind === "out" ? "\nOngkir        : di luar jangkauan (dihitung manual)" : "";
+  const shipLine = sf.kind === "ok" ? `\nOngkir : ${rupiah(sf.fee)}` : sf.kind === "out" ? "\nOngkir : di luar jangkauan (dihitung manual)" : "";
 
   const items = products.filter(p => cart[p.id]);
-  const lines = items.map((p, i) => `${i + 1}. ${p.name} (${p.unit})\n${cart[p.id]} × ${rupiah(p.price)} = *${rupiah(p.price * cart[p.id])}*`);
+  const lines = items.map((p, i) => `${i + 1}) ${p.name} (${p.unit})\n${cart[p.id]} × ${p.price.toLocaleString("id-ID")} = *${p.price * cart[p.id] === 0 ? "0" : (p.price * cart[p.id]).toLocaleString("id-ID")}*`);
   const total = items.reduce((sum, p) => sum + p.price * cart[p.id], 0);
 
   saveOrderToDb({ name, phone, address, delivery, notes: (notes + (mapUrl ? ` | Lokasi: ${mapUrl} | ~${shipState.km.toFixed(1)} km` : "") + (sf.kind === "ok" ? ` | Ongkir: ${rupiah(sf.fee)}` : "")).trim(), shipping_fee: sf.kind === "ok" ? sf.fee : 0, orderItems: items.map(p => ({ pid: p.id, name: p.name, unit: String(p.unit || ""), qty: cart[p.id], price: p.price })) });
 
-  const line = "━━━━━━━━━━━━━━━━";
+  const line = "━━━━━━━━━━━━";
   const grand = sf.kind === "ok" ? total + sf.fee : total;
   const message =
-`*PESANAN BARU - WAROENG SEMBAKO*
+`*PESANAN - WAROENG SEMBAKO*
 ${line}
-
-*DATA PEMESAN*
 Nama : ${name}
 HP : ${phone}
 Alamat : ${address}
-Pengantaran : ${delivery}${locLines}
-
+Antar : ${delivery}${locLines}
 ${line}
-*DAFTAR PESANAN*
-${lines.join("\n\n")}
-
+*DAFTAR PESANAN* (Rp)
+${lines.join("\n")}
 ${line}
-*RINCIAN BIAYA*
-Subtotal barang : ${rupiah(total)}${shipLine}
-*TOTAL ${sf.kind === "ok" ? "(+ ongkir)" : "(perkiraan)"} : ${rupiah(grand)}*
-
+Subtotal : ${rupiah(total)}${shipLine}
+*TOTAL : ${rupiah(grand)}*${sf.kind === "ok" ? "" : " (perkiraan)"}
 Catatan : ${notes || "-"}
 
-Mohon konfirmasi stok, harga akhir, dan ongkir sebelum pesanan diproses. Terima kasih 🙏`;
+Mohon konfirmasi stok, harga akhir & ongkir. Terima kasih 🙏`;
 
   const a = document.createElement("a");
   a.href = `https://wa.me/${WHATSAPP_ADMIN}?text=${encodeURIComponent(message)}`;
