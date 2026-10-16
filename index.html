@@ -419,7 +419,7 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
 <a class="wafloat wa-link" href="https://wa.me/628885409972" target="_blank" rel="noopener" aria-label="Chat WhatsApp">💬</a>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<div id="notaModal" hidden role="dialog" aria-modal="true" aria-label="Nota belanja"><div class="nota-wrap"><div class="nota-paper" id="notaPaper"></div><div class="nota-actions"><button type="button" class="admin-primary" id="notaPrint">🖨 Cetak / PDF</button><button type="button" class="admin-edit-btn" id="notaCopy">Salin teks</button><button type="button" class="admin-edit-btn" id="notaWa">Kirim teks WA</button><button type="button" class="admin-primary" id="notaImg">📲 Kirim WA (gambar nota)</button><button type="button" class="admin-cancel-btn" id="notaClose">Tutup</button></div></div></div>
+<div id="notaModal" hidden role="dialog" aria-modal="true" aria-label="Nota belanja"><div class="nota-wrap"><div class="nota-paper" id="notaPaper"></div><div class="nota-actions"><button type="button" class="admin-primary" id="notaPrint">🖨 Cetak / PDF</button><button type="button" class="admin-edit-btn" id="notaCopy">Salin teks</button><button type="button" class="admin-edit-btn" id="notaWa">Kirim teks WA</button><button type="button" class="admin-primary" id="notaImgChat">📲 Kirim WA ke pembeli</button><button type="button" class="admin-edit-btn" id="notaImg">↗ Bagikan gambar (pilih kontak)</button><button type="button" class="admin-cancel-btn" id="notaClose">Tutup</button></div></div></div>
 <script>
 /* Nomor WhatsApp Waroeng Sembako — format 62 tanpa + dan tanpa spasi */
 let WHATSAPP_ADMIN = "628885409972"; // 0888-5409-972
@@ -1249,6 +1249,19 @@ document.getElementById("notaImg").addEventListener("click",async()=>{
   }catch(err){toast("Gagal membuat gambar nota")}
 });
 
+
+// --- gambar nota: simpan + buka chat pembeli langsung (tinggal lampirkan) ---
+document.getElementById("notaImgChat").addEventListener("click",async()=>{
+  if(!currentNota)return;const o=currentNota,ph=normPhone(o.customer_phone);
+  if(!ph){alert("Nomor WhatsApp pembeli belum diisi.");return}
+  try{
+    const cv=await notaToCanvas(o),blob=await new Promise(r=>cv.toBlob(r,"image/png"));
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Nota-"+notaNo(o)+".png";document.body.appendChild(a);a.click();a.remove();
+    toast("Gambar nota tersimpan. Di chat, tekan 📎 lalu pilih gambar nota.");
+    const nm=o.customer_name||"";
+    setTimeout(()=>openWaTo(ph,"Halo"+(nm?" kak "+nm:"")+", berikut nota pesanan "+notaNo(o)+". Terima kasih 🙏"),700);
+  }catch(err){toast("Gagal membuat gambar nota")}
+});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){const m=document.getElementById("notaModal");if(m&&!m.hidden)m.hidden=true}});
 
 /* ===== Laporan penjualan ===== */
