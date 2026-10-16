@@ -419,7 +419,7 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
 <a class="wafloat wa-link" href="https://wa.me/628885409972" target="_blank" rel="noopener" aria-label="Chat WhatsApp">💬</a>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<div id="notaModal" hidden role="dialog" aria-modal="true" aria-label="Nota belanja"><div class="nota-wrap"><div class="nota-paper" id="notaPaper"></div><div class="nota-actions"><button type="button" class="admin-primary" id="notaPrint">🖨 Cetak / PDF</button><button type="button" class="admin-primary" id="notaImgChat">📲 Kirim WA ke pembeli</button><button type="button" class="admin-cancel-btn" id="notaClose">Tutup</button></div></div></div>
+<div id="notaModal" hidden role="dialog" aria-modal="true" aria-label="Nota belanja"><div class="nota-wrap"><div class="nota-paper" id="notaPaper"></div><div class="nota-actions"><button type="button" class="admin-primary" id="notaPrint">🖨 Cetak / PDF</button><button type="button" class="admin-primary" id="notaImgChat">📲 Kirim WA</button><button type="button" class="admin-edit-btn" id="notaSave">💾 Simpan gambar</button><button type="button" class="admin-cancel-btn" id="notaClose">Tutup</button></div></div></div>
 <script>
 /* Nomor WhatsApp Waroeng Sembako — format 62 tanpa + dan tanpa spasi */
 let WHATSAPP_ADMIN = "628885409972"; // 0888-5409-972
@@ -1234,18 +1234,32 @@ function notaToCanvas(o){
   });
 }
 // --- gambar nota: simpan + buka chat pembeli langsung (tinggal lampirkan) ---
+async function notaFile(o){
+  const cv=await notaToCanvas(o),blob=await new Promise(r=>cv.toBlob(r,"image/png"));
+  return {blob,file:new File([blob],"Nota-"+notaNo(o)+".png",{type:"image/png"})};
+}
+function downloadBlob(blob,name){
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+}
+async function saveNotaImage(o){
+  try{const {blob,file}=await notaFile(o);downloadBlob(blob,file.name);toast("Gambar nota disimpan di folder Download HP.")}
+  catch(err){toast("Gagal membuat gambar nota")}
+}
 async function sendNotaImageChat(o){
-  const ph=normPhone(o.customer_phone);
-  if(!ph){alert("Nomor WhatsApp pembeli belum diisi.");return}
   try{
-    const cv=await notaToCanvas(o),blob=await new Promise(r=>cv.toBlob(r,"image/png"));
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Nota-"+notaNo(o)+".png";document.body.appendChild(a);a.click();a.remove();
-    toast("Gambar nota tersimpan. Di chat, tekan 📎 lalu pilih gambar nota.");
-    const nm=o.customer_name||"";
-    setTimeout(()=>openWaTo(ph,"Halo"+(nm?" kak "+nm:"")+", berikut nota pesanan "+notaNo(o)+". Terima kasih 🙏"),700);
+    const {blob,file}=await notaFile(o),nm=o.customer_name||"";
+    const text="Halo"+(nm?" kak "+nm:"")+", berikut nota pesanan "+notaNo(o)+". Terima kasih 🙏";
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await navigator.share({files:[file],text});return}catch(e){if(e&&e.name==="AbortError")return}
+    }
+    downloadBlob(blob,file.name);
+    const ph=normPhone(o.customer_phone);
+    toast("Gambar nota disimpan. Di chat, tekan 📎 lalu pilih gambar nota.");
+    if(ph)setTimeout(()=>openWaTo(ph,text),1500);
   }catch(err){toast("Gagal membuat gambar nota")}
 }
 document.getElementById("notaImgChat").addEventListener("click",()=>{if(currentNota)sendNotaImageChat(currentNota)});
+document.getElementById("notaSave").addEventListener("click",()=>{if(currentNota)saveNotaImage(currentNota)});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){const m=document.getElementById("notaModal");if(m&&!m.hidden)m.hidden=true}});
 
 /* ===== Laporan penjualan ===== */
