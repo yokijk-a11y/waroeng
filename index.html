@@ -874,7 +874,7 @@ document.getElementById("checkout").addEventListener("click", () => {
   const sf = shipFeeNow();
   const mapUrl = shipState.km != null ? `https://www.google.com/maps?q=${shipState.lat.toFixed(6)},${shipState.lng.toFixed(6)}` : "";
   const locLines = sf.kind === "pickup" || !mapUrl ? "" :
-    `\nTitik lokasi: ${mapUrl}\nJarak: ± ${shipState.km.toFixed(1)} km`;
+    `\nKoordinat : ${shipState.lat.toFixed(6)}, ${shipState.lng.toFixed(6)}\nJarak : ± ${shipState.km.toFixed(1)} km`;
   const shipLine = sf.kind === "ok" ? `\nOngkir : ${rupiah(sf.fee)}` : sf.kind === "out" ? "\nOngkir : di luar jangkauan (dihitung manual)" : "";
 
   const items = products.filter(p => cart[p.id]);
