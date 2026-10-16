@@ -1258,7 +1258,31 @@ async function sendNotaImageChat(o){
     if(ph)setTimeout(()=>openWaTo(ph,text),1500);
   }catch(err){toast("Gagal membuat gambar nota")}
 }
-document.getElementById("notaImgChat").addEventListener("click",()=>{if(currentNota)sendNotaImageChat(currentNota)});
+async function sendNotaWADirect(o){
+  let ph=normPhone(o.customer_phone);
+  if(!ph){
+    const inp=prompt("Nomor WhatsApp pembeli belum diisi.\nMasukkan nomor (contoh 0812xxxxxxx):","");
+    ph=normPhone(inp);
+    if(!ph||ph.length<9)return;
+  }
+  const nm=o.customer_name||"";
+  const text="Halo"+(nm?" kak "+nm:"")+", berikut nota pesanan "+notaNo(o)+". Terima kasih \ud83d\ude4f";
+  try{
+    const fp=notaFile(o);
+    let copied=false;
+    try{
+      if(navigator.clipboard&&window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({"image/png":fp.then(r=>r.blob)})]);
+        copied=true;
+      }
+    }catch(e){}
+    const {blob,file}=await fp;
+    downloadBlob(blob,file.name);
+    toast(copied?"Gambar nota disalin & disimpan. Di chat: tekan \ud83d\udcce lalu pilih gambar nota (atau tempel).":"Gambar nota disimpan. Di chat: tekan \ud83d\udcce lalu pilih gambar nota.");
+    setTimeout(()=>openWaTo(ph,text),800);
+  }catch(err){toast("Gagal membuat gambar nota")}
+}
+document.getElementById("notaImgChat").addEventListener("click",()=>{if(currentNota)sendNotaWADirect(currentNota)});
 document.getElementById("notaSave").addEventListener("click",()=>{if(currentNota)saveNotaImage(currentNota)});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){const m=document.getElementById("notaModal");if(m&&!m.hidden)m.hidden=true}});
 
