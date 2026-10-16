@@ -622,7 +622,22 @@ function renderCategories() {
     renderProducts();
     document.getElementById("daftar").scrollIntoView({ behavior: "smooth", block: "start" });
   }));
+  fillCatVoid();
 }
+function fillCatVoid(){
+  const box=document.getElementById("categories");if(!box)return;
+  const cards=[...box.querySelectorAll(".cat")];if(cards.length<2)return;
+  cards.forEach(c=>c.style.gridColumn="");
+  const cs=getComputedStyle(box),cols=cs.gridTemplateColumns.split(" ").length,gap=parseFloat(cs.columnGap)||0;
+  if(cols<2)return;
+  const first=cards[0],last=cards[cards.length-1],step=(box.clientWidth+gap)/cols;
+  const idx=Math.round((last.offsetLeft-first.offsetLeft)/step),span=cols-idx;
+  if(span<2)return;
+  const top=last.offsetTop,bot=top+last.offsetHeight,right=last.offsetLeft+last.offsetWidth;
+  const blocked=cards.some(c=>c!==last&&c.offsetLeft>=right-2&&c.offsetTop<bot-2&&c.offsetTop+c.offsetHeight>top+2);
+  if(!blocked)last.style.gridColumn="span "+span;
+}
+window.addEventListener("resize",()=>{clearTimeout(window.__fcv);window.__fcv=setTimeout(fillCatVoid,120)});
 
 function renderProducts() {
   const q = document.getElementById("search").value.trim().toLowerCase();
