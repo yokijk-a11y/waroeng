@@ -405,10 +405,8 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
         <div class="shipinfo" id="shipInfo" aria-live="polite"></div>
       </div>
       <select class="fullinput" id="delivery" aria-label="Pilihan pengantaran">
-        <option value="">Pilih pengantaran</option>
-        <option>Antar dalam wilayah layanan kami</option>
-        <option>Konfirmasi wilayah terlebih dahulu</option>
-        <option>Ambil sendiri</option>
+        <option value="Antar ke alamat" selected>Antar ke alamat (ongkir otomatis)</option>
+        <option value="Ambil sendiri">Ambil sendiri di toko</option>
       </select>
       <textarea class="fullinput" id="notes" rows="2" placeholder="Catatan belanja (opsional)" style="resize:vertical" aria-label="Catatan belanja"></textarea>
       <button class="checkout" id="checkout" type="button" disabled>Kirim Pesanan via WhatsApp</button>
@@ -597,7 +595,7 @@ function loadForm() {
     if (f.name) document.getElementById("custName").value = f.name;
     if (f.phone) document.getElementById("custPhone").value = f.phone;
     if (f.address) document.getElementById("custAddress").value = f.address;
-    if (f.delivery) document.getElementById("delivery").value = f.delivery;
+    if (f.delivery) { const dl = document.getElementById("delivery"); dl.value = f.delivery; if (!dl.value) dl.selectedIndex = 0; }
     if (f.notes) document.getElementById("notes").value = f.notes;
     if (f.maps) document.getElementById("mapsLink").value = f.maps;
     if (f.lat != null && f.lng != null) setLocation(f.lat, f.lng);
@@ -866,7 +864,7 @@ document.getElementById("checkout").addEventListener("click", () => {
     return;
   }
 
-  if (delivery === "Antar dalam wilayah layanan kami" && shipState.km == null) {
+  if (delivery === "Antar ke alamat" && shipState.km == null) {
     toast("Bagikan lokasi dulu agar ongkir bisa dihitung.");
     return;
   }
@@ -891,7 +889,7 @@ ${line}
 Nama : ${name}
 HP : ${phone}
 Alamat : ${address}
-Antar : ${delivery}${locLines}
+Pengantaran : ${delivery}${locLines}
 ${line}
 *DAFTAR PESANAN* (Rp)
 ${lines.join("\n")}
