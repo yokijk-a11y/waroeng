@@ -1170,7 +1170,7 @@ adminOrderList.addEventListener("click",async e=>{
   if(act==="addfree"){card.querySelector(".od-items").insertAdjacentHTML("beforeend",orderRow({name:"",qty:1,unit:"",price:0}));updOrderTotal(card);return}
   const o=adminOrders.find(x=>String(x.id)===card.dataset.oid);if(!o)return;
   if(act==="nota"){showNota(Object.assign({},o,readOrderCard(card)));return}
-  if(act==="wa"){sendNotaImageChat(Object.assign({},o,readOrderCard(card)));return}
+  if(act==="wa"){sendNotaWADirect(Object.assign({},o,readOrderCard(card)));return}
   btn.disabled=true;
   try{
     if(act==="save"){
@@ -1282,20 +1282,27 @@ async function sendNotaWADirect(o){
     if(!ph||ph.length<9)return;
   }
   const nm=o.customer_name||"";
-  const text="Halo"+(nm?" kak "+nm:"")+", berikut nota pesanan "+notaNo(o)+". Terima kasih \ud83d\ude4f";
+  const text="Halo"+(nm?" kak "+nm:"")+", berikut nota pesanan "+notaNo(o)+". Terima kasih 🙏";
   try{
-    const fp=notaFile(o);
-    let copied=false;
+    const {blob,file}=await notaFile(o);
+    // HP: share langsung ke WhatsApp (gambar ikut terlampir)
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{
+        await navigator.share({files:[file],text});
+        return;
+      }catch(e){if(e&&e.name==="AbortError")return}
+    }
+    // Fallback: buka chat WA langsung + simpan gambar siap dilampirkan
+    openWaTo(ph,text);
+    downloadBlob(blob,file.name);
     try{
       if(navigator.clipboard&&window.ClipboardItem){
-        await navigator.clipboard.write([new ClipboardItem({"image/png":fp.then(r=>r.blob)})]);
-        copied=true;
+        await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+        toast("Chat terbuka. Gambar nota disalin — tekan 📎 atau tempel di chat.");
+        return;
       }
     }catch(e){}
-    const {blob,file}=await fp;
-    downloadBlob(blob,file.name);
-    toast(copied?"Gambar nota disalin & disimpan. Di chat: tekan \ud83d\udcce lalu pilih gambar nota (atau tempel).":"Gambar nota disimpan. Di chat: tekan \ud83d\udcce lalu pilih gambar nota.");
-    setTimeout(()=>openWaTo(ph,text),800);
+    toast("Chat terbuka. Gambar nota disimpan — tekan 📎 lalu pilih gambar nota.");
   }catch(err){toast("Gagal membuat gambar nota")}
 }
 document.getElementById("notaImgChat").addEventListener("click",()=>{if(currentNota)sendNotaWADirect(currentNota)});
