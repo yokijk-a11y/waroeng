@@ -402,7 +402,7 @@ body.searching #kategori,body.searching #categories,body.searching .promo-strip,
       <input class="fullinput" id="custAddress" type="text" placeholder="Alamat lengkap pengantaran" autocomplete="street-address" aria-label="Alamat pengantaran">
       <div class="locbox">
         <button class="locbtn" id="shareLoc" type="button">📍 Bagikan lokasi saya</button>
-        <input class="fullinput" id="mapsLink" type="text" placeholder="atau tempel link Google Maps / koordinat" aria-label="Link Google Maps atau koordinat" inputmode="url" autocomplete="off">
+        <input class="fullinput" id="mapsLink" type="text" placeholder="tempel link Maps (boleh link pendek) / koordinat" aria-label="Link Google Maps atau koordinat" inputmode="url" autocomplete="off">
         <div class="shipinfo" id="shipInfo" aria-live="polite"></div>
       </div>
       <select class="fullinput" id="delivery" aria-label="Pilihan pengantaran">
@@ -456,9 +456,70 @@ function clearLocation() { shipState = { lat: null, lng: null, km: null, fee: nu
 function parseMapsInput(t) {
   t = decodeURIComponent(String(t || "").trim());
   if (!t) return null;
-  const pats = [/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/, /[?&](?:q|ll|query|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/, /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, /^(-?\d+\.\d+)\s*[, ]\s*(-?\d+\.\d+)$/];
+  // Urutan: prioritaskan koordinat tempat (!3d!4d), lalu @lat,lng, lalu pola lain
+  const pats = [
+    /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+    /@(-?\d+\.\d+),\s*(-?\d+\.\d+)/,
+    /\/dir\/(-?\d+\.\d+),\s*(-?\d+\.\d+)/,
+    /[?&](?:q|ll|query|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/,
+    /[?&]center=(-?\d+\.\d+)%2C(-?\d+\.\d+)/i,
+    /^(-?\d+\.\d+)\s*[, ]\s*(-?\d+\.\d+)$/
+  ];
   for (const p of pats) { const m = t.match(p); if (m) return [parseFloat(m[1]), parseFloat(m[2])]; }
   return null;
+}
+function isShortMapsUrl(u) {
+  return /(?:maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/maps)\//i.test(String(u||""));
+}
+async function expandShortMaps(url) {
+  const proxies = [
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+    u => "https://corsproxy.io/?" + encodeURIComponent(u)
+  ];
+  for (const make of proxies) {
+    try {
+      const ctrl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(9000) : undefined;
+      const r = await fetch(make(url), ctrl ? { signal: ctrl } : {});
+      if (!r.ok) continue;
+      const body = await r.text();
+      let c = parseMapsInput(body);
+      if (c) return c;
+      // Ambil URL maps panjang dari HTML redirect/body
+      const links = body.match(/https?:\/\/(?:www\.)?google\.com\/maps[^\s"'<>]{10,}/gi) || [];
+      for (const L of links) {
+        c = parseMapsInput(L);
+        if (c) return c;
+      }
+      // Kadang ada data koordinat di JSON
+      const jm = body.match(/\"(-?\d+\.\d{4,})\",\"(-?\d+\.\d{4,})\"/);
+      if (jm) return [parseFloat(jm[1]), parseFloat(jm[2])];
+    } catch (e) {}
+  }
+  return null;
+}
+let mapsLinkTimer = null;
+async function handleMapsLinkInput(v) {
+  v = String(v || "").trim();
+  if (!v) { clearLocation(); return; }
+  let c = parseMapsInput(v);
+  if (c) { setLocation(c[0], c[1]); return; }
+  if (isShortMapsUrl(v)) {
+    const info = document.getElementById("shipInfo");
+    if (info) info.textContent = "Membaca link Maps pendek...";
+    c = await expandShortMaps(v);
+    // Pastikan input belum diganti user
+    const cur = (document.getElementById("mapsLink") || {}).value || "";
+    if (cur.trim() !== v) return;
+    if (c) { setLocation(c[0], c[1]); toast("Lokasi dari link Maps terbaca ✓"); return; }
+    shipState = { lat: null, lng: null, km: null, fee: null, out: false };
+    refreshShip();
+    if (info) info.textContent = "Link pendek gagal dibaca. Buka link di Maps → bagikan → salin link panjang, atau pakai tombol Bagikan lokasi.";
+    return;
+  }
+  shipState = { lat: null, lng: null, km: null, fee: null, out: false };
+  refreshShip();
+  const info = document.getElementById("shipInfo");
+  if (info) info.textContent = "Link belum terbaca. Tempel link Google Maps / koordinat, atau pakai tombol Bagikan lokasi.";
 }
 function shipFeeNow() {
   const d = document.getElementById("delivery").value;
@@ -839,10 +900,8 @@ document.addEventListener("keydown", e => {
 document.getElementById("shareLoc").addEventListener("click", shareLocation);
 document.getElementById("mapsLink").addEventListener("input", e => {
   const v = e.target.value.trim();
-  if (!v) { clearLocation(); return; }
-  const c = parseMapsInput(v);
-  if (c) setLocation(c[0], c[1]);
-  else { shipState = { lat: null, lng: null, km: null, fee: null, out: false }; refreshShip(); document.getElementById("shipInfo").textContent = "Link belum terbaca. Link pendek (maps.app.goo.gl) tidak bisa dibaca, gunakan tombol Bagikan lokasi."; }
+  clearTimeout(mapsLinkTimer);
+  mapsLinkTimer = setTimeout(() => handleMapsLinkInput(v), 400);
 });
 document.getElementById("delivery").addEventListener("change", refreshShip);
 
