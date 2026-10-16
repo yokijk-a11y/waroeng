@@ -1074,22 +1074,12 @@ const shipOf=o=>{let f=Number(o.shipping_fee)||0;if(!f){const m=String(o.notes||
 const orderTotal=o=>Math.max(0,orderSub(o)+shipOf(o)-(Number(o.discount)||0));
 const fmtQty=q=>String(Math.round((Number(q)||0)*100)/100).replace(".",",");
 function notaText(o){
-  const W=32,num=n=>String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,"."),pad=(t,n)=>String(t).padEnd(n),rp=(t,n)=>String(t).padStart(n);
-  const wrap=(t,n)=>{const out=[];let cur="";String(t||"").split(/\s+/).filter(Boolean).forEach(w=>{while(w.length>n){if(cur){out.push(cur);cur=""}out.push(w.slice(0,n));w=w.slice(n)}if(!cur)cur=w;else if((cur+" "+w).length<=n)cur+=" "+w;else{out.push(cur);cur=w}});if(cur)out.push(cur);return out.length?out:[""]};
-  const kv=(k,v)=>k+rp(v,W-k.length);
-  const T=[pad("No",2)+" "+pad("Barang",12)+" "+pad("Qty",8)+" "+rp("Jumlah",7),"-".repeat(W)];
-  orderItems(o).forEach((x,i)=>{
-    const nm=wrap(x.name,12),qty=(fmtQty(x.qty)+(x.unit?" "+x.unit:"")).slice(0,8),n=Math.max(nm.length,2);
-    for(let k=0;k<n;k++){
-      const a=k===0?pad(i+1,2):"  ",b=pad(nm[k]||"",12);
-      const c=k===0?pad(qty,8):k===1?pad("@"+num(x.price),8):pad("",8);
-      const d=k===0?rp(num(x.qty*x.price),7):rp("",7);
-      T.push((a+" "+b+" "+c+" "+d).replace(/\s+$/,""));
-    }
-  });
-  T.push("-".repeat(W),kv("Subtotal","Rp "+num(orderSub(o))),kv("Ongkir","Rp "+num(shipOf(o))));
-  if(Number(o.discount))T.push(kv("Diskon","-Rp "+num(o.discount)));
-  const L=["*NOTA BELANJA*","*Waroeng Sembako*","","No        : "+notaNo(o),"Tanggal   : "+wibDate(o.created_at,true),"Pelanggan : "+(o.customer_name||"-"),"","```"].concat(T,["```","*TOTAL: "+rupiah(orderTotal(o))+"*","Status: "+(o.paid?"LUNAS \u2705":"Belum dibayar"),"","Terima kasih sudah belanja di Waroeng Sembako \ud83d\ude4f"]);
+  const num=n=>String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,"."),line="━━━━━━━━━━━━━━━━";
+  const lines=orderItems(o).map((x,i)=>`${i+1}) ${x.name}${x.unit?" ("+x.unit+")":""}\n${fmtQty(x.qty)} × ${num(x.price)} = *${num((Number(x.qty)||0)*(Number(x.price)||0))}*`);
+  const L=["*PESANAN - WAROENG SEMBAKO*",line,"No : "+notaNo(o),"Tanggal : "+wibDate(o.created_at,true),"Nama : "+(o.customer_name||"-"),line,"*DAFTAR PESANAN* (Rp)"].concat(lines.length?lines:["(belum ada barang)"],[line,"Subtotal : "+rupiah(orderSub(o))]);
+  if(shipOf(o))L.push("Ongkir : "+rupiah(shipOf(o)));
+  if(Number(o.discount))L.push("Diskon : -"+rupiah(o.discount));
+  L.push("*TOTAL : "+rupiah(orderTotal(o))+"*","Status : "+(o.paid?"*LUNAS* ✅":"Belum dibayar"),"","Terima kasih sudah belanja di Waroeng Sembako 🙏");
   return L.join("\n");
 }
 function openWaTo(phone,text){const a=document.createElement("a");a.href="https://wa.me/"+phone+"?text="+encodeURIComponent(text);a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove()}
